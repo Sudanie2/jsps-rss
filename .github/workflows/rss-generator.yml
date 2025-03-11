@@ -15,19 +15,31 @@ jobs:
 
       - name: Fetch JSON and Convert to RSS
         run: |
+          # 最新のJSONを取得
           curl -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
-          jq -r '.[] | "<item><title>\(.title)</title><link>\(.url)</link><pubDate>\(.date)</pubDate></item>"' inform_ja.json > items.xml
-          echo '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>JSPS News</title><link>https://www.jsps.go.jp/</link><description>日本学術振興会の新着情報</description>' > rss.xml
-          cat items.xml >> rss.xml
+
+          # 30日以内の記事を抽出し、RSSフォーマットに変換
+          BASE_URL="https://www.jsps.go.jp"
+          TODAY=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          THIRTY_DAYS_AGO=$(date -u -d "30 days ago" +"%Y-%m-%dT%H:%M:%SZ")
+
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > rss.xml
+          echo '<rss version="2.0"><channel>' >> rss.xml
+          echo '<title>JSPS News</title>' >> rss.xml
+          echo '<link>https://www.jsps.go.jp/</link>' >> rss.xml
+          echo '<description>日本学術振興会の新着情報</description>' >> rss.xml
+
+          cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$THIRTY_DAYS_AGO" --arg end_date "$TODAY" '
+            map(select(.news_date >= $start_date and .news_date <= $end_date)) |
+            .[] | 
+            "<item><title>\(.title)</title><link>" + $base_url + \(.site_url) + "</link><pubDate>\(.news_date)</pubDate></item>"' >> rss.xml
+
           echo '</channel></rss>' >> rss.xml
-          
-      - name: Commit RSS feed
+
+      - name: Commit and Push RSS
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add rss.xml
           git commit -m "Updated RSS feed"
           git push
-
-      - name: Run RSS Generator
-        uses: codesandtags/rss-generator-action@main
