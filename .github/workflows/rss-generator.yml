@@ -3,7 +3,7 @@ name: Generate RSS Feed
 on:
   schedule:
     - cron: "10 1 * * *" # UTC 01:10 = JST 10:10
-  workflow_dispatch: # 手動実行も可能
+  workflow_dispatch:
 
 jobs:
   build:
@@ -43,7 +43,15 @@ jobs:
           cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
             map(select(.news_date >= $start_date and .news_date <= $end_date)) |
             .[] | 
-            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"' >> new_rss.xml
+            "<item>
+               <title>\(.title | @html)</title>
+               <link>\($base_url)\(.site_url | @html)</link>
+               <pubDate>\(.news_date)</pubDate>
+               " + 
+               (if .tags then 
+                  ([.tags[].news_tag_name] | map("<category>" + . + "</category>") | join("\n")) 
+               else "" end) + 
+            "</item>"' >> new_rss.xml
 
           echo '</channel></rss>' >> new_rss.xml
 
