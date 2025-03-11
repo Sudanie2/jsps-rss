@@ -29,10 +29,10 @@ jobs:
           # 最新のJSONを取得
           curl -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
 
-          # 30日以内の記事を抽出
+          # 14日以内の記事を抽出
           BASE_URL="https://www.jsps.go.jp"
           TODAY=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          THIRTY_DAYS_AGO=$(date -u -d "30 days ago" +"%Y-%m-%dT%H:%M:%SZ")
+          FOURTEEN_DAYS_AGO=$(date -u -d "14 days ago" +"%Y-%m-%dT%H:%M:%SZ")
 
           echo '<?xml version="1.0" encoding="UTF-8"?>' > new_rss.xml
           echo '<rss version="2.0"><channel>' >> new_rss.xml
@@ -40,10 +40,10 @@ jobs:
           echo '<link>https://www.jsps.go.jp/</link>' >> new_rss.xml
           echo '<description>日本学術振興会の新着情報</description>' >> new_rss.xml
 
-          cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$THIRTY_DAYS_AGO" --arg end_date "$TODAY" '
+          cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
             map(select(.news_date >= $start_date and .news_date <= $end_date)) |
-            .[] | 
-            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"' >> new_rss.xml
+            .[] |
+            "<item><title>\(.title) (" + (.tags[0].news_tag_name // "No Tag") + ")</title><link>\($base_url)\(.site_url)</link><pubDate>\(.news_date)</pubDate></item>"' >> new_rss.xml
 
           echo '</channel></rss>' >> new_rss.xml
 
