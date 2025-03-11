@@ -58,6 +58,10 @@ jobs:
 
       - name: Commit and Push RSS
         run: |
+          if git diff --quiet rss.xml; then
+            echo "No changes in rss.xml. Skipping commit."
+            exit 0
+          fi
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add rss.xml
