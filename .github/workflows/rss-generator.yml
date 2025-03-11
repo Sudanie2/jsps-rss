@@ -1,0 +1,33 @@
+name: Generate RSS Feed
+
+on:
+  schedule:
+    - cron: "10 1 * * *" # UTC 01:10 = JST 10:10
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch JSON and Convert to RSS
+        run: |
+          curl -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
+          jq -r '.[] | "<item><title>\(.title)</title><link>\(.url)</link><pubDate>\(.date)</pubDate></item>"' inform_ja.json > items.xml
+          echo '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>JSPS News</title><link>https://www.jsps.go.jp/</link><description>日本学術振興会の新着情報</description>' > rss.xml
+          cat items.xml >> rss.xml
+          echo '</channel></rss>' >> rss.xml
+          
+      - name: Commit RSS feed
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add rss.xml
+          git commit -m "Updated RSS feed"
+          git push
+
+      - name: Run RSS Generator
+        uses: codesandtags/rss-generator-action@main
