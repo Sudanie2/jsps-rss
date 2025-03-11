@@ -13,6 +13,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
+
       - name: Fetch JSON and Convert to RSS
         run: |
           # 最新のJSONを取得
@@ -32,7 +35,7 @@ jobs:
           cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$THIRTY_DAYS_AGO" --arg end_date "$TODAY" '
             map(select(.news_date >= $start_date and .news_date <= $end_date)) |
             .[] | 
-            "<item><title>\(.title)</title><link>" + $base_url + \(.site_url) + "</link><pubDate>\(.news_date)</pubDate></item>"' >> rss.xml
+            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"' >> rss.xml
 
           echo '</channel></rss>' >> rss.xml
 
