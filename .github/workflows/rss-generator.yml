@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # 履歴をすべて取得
 
       - name: Install dependencies
         run: sudo apt-get install -y jq
@@ -29,30 +27,23 @@ jobs:
       - name: Fetch JSON and Convert to RSS
         run: |
           # 最新のJSONを取得
-          curl -sL "https://kosodate-green.mlit.go.jp/assets/data/news.json" -o news.json
+          curl -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
 
-          # RSS ヘッダー作成
+          # 14日以内の記事を抽出
+          BASE_URL="https://www.jsps.go.jp"
+          TODAY=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          FOURTEEN_DAYS_AGO=$(date -u -d "14 days ago" +"%Y-%m-%dT%H:%M:%SZ")
+
           echo '<?xml version="1.0" encoding="UTF-8"?>' > new_rss.xml
           echo '<rss version="2.0"><channel>' >> new_rss.xml
-          echo '<title>子育てグリーン住宅支援事業 新着情報</title>' >> new_rss.xml
-          echo '<link>https://kosodate-green.mlit.go.jp/</link>' >> new_rss.xml
-          echo '<description>最新のニュースを提供します</description>' >> new_rss.xml
-          echo '<language>ja</language>' >> new_rss.xml
+          echo '<title>JSPS News</title>' >> new_rss.xml
+          echo '<link>https://www.jsps.go.jp/</link>' >> new_rss.xml
+          echo '<description>日本学術振興会の新着情報</description>' >> new_rss.xml
 
-          # JSON から RSS アイテムを作成
-          cat news.json | jq -c '.[]' | while read item; do
-            title=$(echo $item | jq -r '.title | @html')
-            link=$(echo $item | jq -r '.url | @html')
-            pubDate=$(echo $item | jq -r '.date' | xargs -I {} date -d {} -R) # RFC 2822 形式
-            guid=$(echo $link | md5sum | awk '{print $1}') # URL の MD5 ハッシュで一意の ID を生成
-
-            echo "<item>" >> new_rss.xml
-            echo "  <title>${title}</title>" >> new_rss.xml
-            echo "  <link>${link}</link>" >> new_rss.xml
-            echo "  <guid isPermaLink=\"false\">${guid}</guid>" >> new_rss.xml
-            echo "  <pubDate>${pubDate}</pubDate>" >> new_rss.xml
-            echo "</item>" >> new_rss.xml
-          done
+          cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
+            map(select(.news_date >= $start_date and .news_date <= $end_date)) |
+            .[] | 
+            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"' >> new_rss.xml
 
           echo '</channel></rss>' >> new_rss.xml
 
