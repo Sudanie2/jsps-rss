@@ -29,7 +29,7 @@ jobs:
       - name: Fetch JSON and Convert to RSS
         run: |
           # 最新のJSONを取得
-          curl -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
+          curl -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
 
           # 14日以内の記事を抽出
           BASE_URL="https://www.jsps.go.jp"
