@@ -33,13 +33,10 @@ jobs:
 
       - name: Fetch JSON and Convert to RSS
         run: |
-          # 最新のJSONを取得
-          curl -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
+          set -euo pipefail
 
-          # 取得内容の確認用
-          echo "Downloaded content preview:"
-          head -c 300 inform_ja.json
-          echo
+          # 最新のJSONを取得
+          curl --retry 3 --retry-delay 10 --retry-all-errors -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
 
           # JSONとして正しいか確認
           jq empty inform_ja.json
