@@ -35,9 +35,14 @@ jobs:
         run: |
           # 最新のJSONを取得
           curl -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
+
+          # 取得内容の確認用
           echo "Downloaded content preview:"
           head -c 300 inform_ja.json
           echo
+
+          # JSONとして正しいか確認
+          jq empty inform_ja.json
 
           # 14日以内の記事を抽出
           BASE_URL="https://www.jsps.go.jp"
