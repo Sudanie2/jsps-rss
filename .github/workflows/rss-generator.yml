@@ -7,6 +7,9 @@ on:
     - cron: "10 8 * * *"  # JST 17:10
   workflow_dispatch: # 手動実行も可能
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,7 +19,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get install -y jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Fetch previous RSS file
         run: |
@@ -30,6 +35,9 @@ jobs:
         run: |
           # 最新のJSONを取得
           curl -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
+          echo "Downloaded content preview:"
+          head -c 300 inform_ja.json
+          echo
 
           # 14日以内の記事を抽出
           BASE_URL="https://www.jsps.go.jp"
@@ -42,10 +50,11 @@ jobs:
           echo '<link>https://www.jsps.go.jp/</link>' >> new_rss.xml
           echo '<description>日本学術振興会の新着情報</description>' >> new_rss.xml
 
-          cat inform_ja.json | jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
+          jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
             map(select(.news_date >= $start_date and .news_date <= $end_date)) |
             .[] |
-            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"' >> new_rss.xml
+            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"
+          ' inform_ja.json >> new_rss.xml
 
           echo '</channel></rss>' >> new_rss.xml
 
