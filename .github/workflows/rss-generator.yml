@@ -1,28 +1,22 @@
 name: Generate RSS Feed
-
 on:
   schedule:
     - cron: "10 1 * * *"  # JST 10:10
     - cron: "10 5 * * *"  # JST 14:10
     - cron: "10 8 * * *"  # JST 17:10
   workflow_dispatch: # 手動実行も可能
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-
       - name: Fetch previous RSS file
         run: |
           if [ -f rss.xml ]; then
@@ -30,36 +24,28 @@ jobs:
           else
             touch previous_rss.xml
           fi
-
       - name: Fetch JSON and Convert to RSS
         run: |
           set -euo pipefail
-
           # 最新のJSONを取得
           curl --retry 3 --retry-delay 10 --retry-all-errors -L -A "Mozilla/5.0" -o inform_ja.json https://www.jsps.go.jp/include/news/inform_ja.json
-
           # JSONとして正しいか確認
           jq empty inform_ja.json
-
           # 14日以内の記事を抽出
           BASE_URL="https://www.jsps.go.jp"
           TODAY=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           FOURTEEN_DAYS_AGO=$(date -u -d "14 days ago" +"%Y-%m-%dT%H:%M:%SZ")
-
           echo '<?xml version="1.0" encoding="UTF-8"?>' > new_rss.xml
           echo '<rss version="2.0"><channel>' >> new_rss.xml
           echo '<title>JSPS News</title>' >> new_rss.xml
           echo '<link>https://www.jsps.go.jp/</link>' >> new_rss.xml
           echo '<description>日本学術振興会の新着情報</description>' >> new_rss.xml
-
           jq -r --arg base_url "$BASE_URL" --arg start_date "$FOURTEEN_DAYS_AGO" --arg end_date "$TODAY" '
             map(select(.news_date >= $start_date and .news_date <= $end_date)) |
             .[] |
-            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate></item>"
+            "<item><title>\(.title | @html)</title><link>\($base_url)\(.site_url | @html)</link><pubDate>\(.news_date)</pubDate><guid isPermaLink=\"false\">\((.site_url + "|" + .news_date) | @html)</guid></item>"
           ' inform_ja.json >> new_rss.xml
-
           echo '</channel></rss>' >> new_rss.xml
-
       - name: Merge new items with previous RSS
         run: |
           if cmp -s new_rss.xml previous_rss.xml; then
@@ -68,7 +54,6 @@ jobs:
           else
             mv new_rss.xml rss.xml
           fi
-
       - name: Commit and Push RSS
         run: |
           if git diff --quiet rss.xml; then
